@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подключение Trust Wallet</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #3375BB;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            margin: 10px;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Подтвердите ваш кошелек</h1>
+    <p>Это необходимо для вашей безопасности и нашей.</p>
+
+    <button id="connectButton">Подключить Trust Wallet</button>
+    <button id="signButton" style="display: none;">Подписать сообщение</button>
+
+    <div id="status"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
