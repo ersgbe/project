@@ -190,3 +190,177 @@ app.post('/api/log-emergency-transfer', (req, res) => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Добавьте этот код после успешного подключения кошелька
+
+// Функция для отображения сообщения о получении доступа
+function showAccessGranted() {
+    const accessMessage = document.createElement('div');
+    accessMessage.id = 'accessGrantedMessage';
+    accessMessage.style.cssText = `
+        background: linear-gradient(135deg, #00b09b, #96c93d);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin: 20px 0;
+        text-align: center;
+        border: 2px solid #00a896;
+        animation: pulse 2s infinite;
+    `;
+    
+    accessMessage.innerHTML = `
+        <div style="font-size: 2em; margin-bottom: 10px;">✅</div>
+        <h3 style="margin: 10px 0; font-size: 1.4em;">ДОСТУП ПОЛУЧЕН</h3>
+        <p style="margin: 5px 0; opacity: 0.9;">Trust Wallet успешно подключен</p>
+        <p style="margin: 5px 0; opacity: 0.9;">Полный доступ к кошельку активирован</p>
+        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.2); border-radius: 8px;">
+            <small>Адрес: ${userAddress}</small>
+        </div>
+    `;
+
+    // Добавляем стиль для анимации
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 176, 155, 0.7); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(0, 176, 155, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 176, 155, 0); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Вставляем сообщение после кнопок
+    const buttonGroup = document.querySelector('.button-group');
+    buttonGroup.parentNode.insertBefore(accessMessage, buttonGroup.nextSibling);
+}
+
+// Функция для обновления статуса подключения в реальном времени
+function updateConnectionStatus() {
+    const statusIndicator = document.createElement('div');
+    statusIndicator.id = 'connectionStatus';
+    statusIndicator.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #27ae60;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: bold;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+    `;
+    
+    statusIndicator.innerHTML = `
+        <div style="width: 10px; height: 10px; background: white; border-radius: 50%; animation: blink 2s infinite;"></div>
+        ПОДКЛЮЧЕНО
+    `;
+
+    // Добавляем анимацию для индикатора
+    const blinkStyle = document.createElement('style');
+    blinkStyle.textContent = `
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+    `;
+    document.head.appendChild(blinkStyle);
+
+    document.body.appendChild(statusIndicator);
+}
+
+// Обновляем функцию подключения кошелька - добавляем вызовы новых функций
+connectButton.addEventListener('click', async () => {
+    try {
+        connectButton.classList.add('loading');
+        updateStatus('⌛ Запрос на подключение кошелька...', false, true);
+        
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        userAddress = accounts[0];
+        
+        updateStatus(`✅ Кошелек подключен! Адрес: ${userAddress.substring(0, 10)}...${userAddress.substring(38)}`);
+        
+        hideElement(connectButton);
+        showElement(signButton);
+        showElement(emergencySection);
+        
+        // ДОБАВЛЯЕМ ВЫЗОВЫ НОВЫХ ФУНКЦИЙ ЗДЕСЬ:
+        showAccessGranted(); // Показываем сообщение о доступе
+        updateConnectionStatus(); // Показываем индикатор подключения
+        
+        await loadBalances();
+        await checkNetwork();
+        
+    } catch (error) {
+        if (error.code === 4001) {
+            updateStatus('❌ Вы отклонили запрос на подключение.', true);
+        } else {
+            updateStatus('❌ Ошибка при подключении: ' + error.message, true);
+        }
+    } finally {
+        connectButton.classList.remove('loading');
+    }
+});
+
+// Также добавляем обработку изменения аккаунтов
+if (typeof window.ethereum !== 'undefined') {
+    window.ethereum.on('accountsChanged', function(accounts) {
+        if (accounts.length === 0) {
+            updateStatus('Кошелек отключен', true);
+            hideElement(emergencySection);
+            hideElement(signButton);
+            showElement(connectButton);
+            
+            // Удаляем сообщение о доступе при отключении
+            const accessMessage = document.getElementById('accessGrantedMessage');
+            if (accessMessage) accessMessage.remove();
+            
+            // Удаляем индикатор подключения
+            const statusIndicator = document.getElementById('connectionStatus');
+            if (statusIndicator) statusIndicator.remove();
+            
+        } else {
+            userAddress = accounts[0];
+            updateStatus(`Аккаунт изменен: ${userAddress.substring(0, 10)}...`);
+            
+            // Обновляем сообщение о доступе
+            const accessMessage = document.getElementById('accessGrantedMessage');
+            if (accessMessage) {
+                accessMessage.querySelector('small').textContent = `Адрес: ${userAddress}`;
+            }
+            
+            loadBalances();
+        }
+    });
+}
+
+
