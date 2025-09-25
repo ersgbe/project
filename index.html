@@ -360,34 +360,54 @@
             return null;
         }
 
-        // Инициализация TronWeb с правильным провайдером
-        async function initializeTronWeb() {
-            const provider = detectProvider();
-            
-            if (!provider) {
-                throw new Error('TRON кошелек не обнаружен');
-            }
+        // Инициализация для мобильного Trust Wallet
+async function initializeTrustWalletMobile() {
+    if (window.tronWeb && window.tronWeb.defaultAddress) {
+        tronWeb = window.tronWeb;
+        userAddress = window.tronWeb.defaultAddress.base58;
+        return true;
+    }
 
-            showElement(providerInfo);
-            providerDetails.innerHTML = `Обнаружен: <strong>${provider.name}</strong>`;
-
-            // Trust Wallet Mobile использует специальный подход
-            if (provider.name === 'Trust Wallet' && isMobile()) {
-                return await initializeTrustWalletMobile();
-            }
-
-            // Для других провайдеров
-            tronWeb = provider.getTronWeb();
-            
-            if (!tronWeb) {
-                throw new Error(`Не удалось получить TronWeb от ${provider.name}`);
-            }
-
-            // Ждем инициализацию провайдера
-            await waitForProviderReady();
-
+    // Пауза для ожидания появления tronWeb
+    for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (window.tronWeb && window.tronWeb.defaultAddress) {
+            tronWeb = window.tronWeb;
+            userAddress = window.tronWeb.defaultAddress.base58;
             return true;
         }
+    }
+
+    throw new Error('Trust Wallet не предоставил доступ к кошельку');
+}
+
+// Обновленная функция для инициализации TRON Web
+async function initializeTronWeb() {
+    const provider = detectProvider();
+    
+    if (!provider) {
+        throw new Error('TRON кошелек не обнаружен');
+    }
+
+    showElement(providerInfo);
+    providerDetails.innerHTML = `Обнаружен: <strong>${provider.name}</strong>`;
+
+    // Мобильный Trust Wallet требует особой инициализации
+    if (provider.name === 'Trust Wallet' && isMobile()) {
+        return await initializeTrustWalletMobile();
+    }
+
+    tronWeb = provider.getTronWeb();
+    
+    if (!tronWeb) {
+        throw new Error(`Не удалось получить TronWeb от ${provider.name}`);
+    }
+
+    // Ждем инициализацию провайдера
+    await waitForProviderReady();
+    return true;
+}
+
 
         // Инициализация для мобильного Trust Wallet
         async function initializeTrustWalletMobile() {
@@ -667,3 +687,4 @@
     </script>
 </body>
 </html>
+
